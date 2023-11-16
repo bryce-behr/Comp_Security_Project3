@@ -27,6 +27,7 @@ def rsa_gen_keypair():
 #   storage.
 #
 def rsa_serialize_private_key(private_key):
+    return rsa.RSAPrivateKey.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8)
     raise Exception("You need to implement this function!")
 
 #
@@ -37,6 +38,7 @@ def rsa_serialize_private_key(private_key):
 # Returns: An rsa.RSAPrivateKey object consisting of the deserialized key.
 #
 def rsa_deserialize_private_key(pem_privkey):
+    return serialization.load_pem_private_key(pem_privkey, None)
     raise Exception("You need to implement this function!")
 
 #
@@ -46,6 +48,7 @@ def rsa_deserialize_private_key(pem_privkey):
 #   SubjectPublicKeyInfo format and PEM encoding.
 #
 def rsa_serialize_public_key(public_key):
+    rsa.RSAPublicKey.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
     raise Exception("You need to implement this function!")
 
 #
@@ -54,6 +57,7 @@ def rsa_serialize_public_key(public_key):
 # Returns: An rsa.RSAPublicKey object consisting of the deserialized key.
 #
 def rsa_deserialize_public_key(pem_pubkey):
+    return serialization.load_pem_public_key(pem_pubkey)
     raise Exception("You need to implement this function!")
 
 #
