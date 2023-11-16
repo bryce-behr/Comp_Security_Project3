@@ -28,7 +28,6 @@ def rsa_gen_keypair():
 #
 def rsa_serialize_private_key(private_key):
     return rsa.RSAPrivateKey.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8)
-    raise Exception("You need to implement this function!")
 
 #
 # Argument: A string containing an unencrypted RSA private key in PEM format.
@@ -39,7 +38,6 @@ def rsa_serialize_private_key(private_key):
 #
 def rsa_deserialize_private_key(pem_privkey):
     return serialization.load_pem_private_key(pem_privkey, None)
-    raise Exception("You need to implement this function!")
 
 #
 # Argument: An rsa.RSAPublicKey object
@@ -48,8 +46,7 @@ def rsa_deserialize_private_key(pem_privkey):
 #   SubjectPublicKeyInfo format and PEM encoding.
 #
 def rsa_serialize_public_key(public_key):
-    rsa.RSAPublicKey.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
-    raise Exception("You need to implement this function!")
+    return rsa.RSAPublicKey.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
 
 #
 # Argument: A string containing an RSA public key in PEM format.
@@ -58,7 +55,6 @@ def rsa_serialize_public_key(public_key):
 #
 def rsa_deserialize_public_key(pem_pubkey):
     return serialization.load_pem_public_key(pem_pubkey)
-    raise Exception("You need to implement this function!")
 
 #
 # Arguments:
@@ -69,6 +65,7 @@ def rsa_deserialize_public_key(pem_pubkey):
 # Returns: The encrypted message (ciphertext), as a raw byte string.
 #
 def rsa_encrypt(public_key, plaintext):
+    # Chris
     raise Exception("You need to implement this function!")
 
 #
@@ -80,6 +77,7 @@ def rsa_encrypt(public_key, plaintext):
 # Returns: The decrypted message (plaintext), as a raw byte string.
 #
 def rsa_decrypt(private_key, ciphertext):
+    # Chris
     raise Exception("You need to implement this function!")
 
 #
@@ -105,6 +103,7 @@ def rsa_decrypt(private_key, ciphertext):
 # Returns: The encrypted message (ciphertext), as a raw byte string.
 #
 def aes_encrypt(key, nonce, plaintext):
+    # Bryce
     raise Exception("You need to implement this function!")
 
 #
@@ -122,6 +121,7 @@ def aes_encrypt(key, nonce, plaintext):
 # Returns: The decrypted message (plaintext), as a raw byte string.
 #
 def aes_decrypt(key, nonce, ciphertext):
+    # Bryce
     raise Exception("You need to implement this function!")
 
 #
@@ -138,6 +138,7 @@ def aes_decrypt(key, nonce, ciphertext):
 #   ciphertext: The encrypted message (as a raw byte string).
 #
 def aes_encrypt_with_random_session_key(plaintext):
+    # Bryce
     raise Exception("You need to implement this function!")
 
 #
@@ -157,6 +158,7 @@ def aes_encrypt_with_random_session_key(plaintext):
 #   ciphertext: The AES-256-CTR-encrypted message (as a raw byte string).
 #
 def encrypt_message_with_aes_and_rsa(public_key, plaintext):
+    # We'll get this once the other ones are done
     raise Exception("You need to implement this function!")
 
 #
@@ -176,6 +178,7 @@ def encrypt_message_with_aes_and_rsa(public_key, plaintext):
 #
 def decrypt_message_with_aes_and_rsa(
         private_key, encrypted_session_key, nonce, ciphertext):
+    # We'll get this once the other ones are done
     raise Exception("You need to implement this function!")
 
 #
