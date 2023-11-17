@@ -27,7 +27,7 @@ def rsa_gen_keypair():
 #   storage.
 #
 def rsa_serialize_private_key(private_key):
-    return rsa.RSAPrivateKey.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8)
+    return private_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
 
 #
 # Argument: A string containing an unencrypted RSA private key in PEM format.
@@ -46,7 +46,7 @@ def rsa_deserialize_private_key(pem_privkey):
 #   SubjectPublicKeyInfo format and PEM encoding.
 #
 def rsa_serialize_public_key(public_key):
-    return rsa.RSAPublicKey.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+    return public_key.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
 
 #
 # Argument: A string containing an RSA public key in PEM format.
