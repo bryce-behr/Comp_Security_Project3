@@ -104,7 +104,9 @@ def rsa_decrypt(private_key, ciphertext):
 #
 def aes_encrypt(key, nonce, plaintext):
     # Bryce
-    raise Exception("You need to implement this function!")
+    encryptor = Cipher(algorithms.AES256(key = key), modes.CTR(nonce = nonce)).encryptor()
+    ciphertext = encryptor.update(data = plaintext) + encryptor.finalize()
+    return ciphertext
 
 #
 # Decrypts a plaintext message using AES-256 in CTR (Counter) mode.
@@ -122,7 +124,9 @@ def aes_encrypt(key, nonce, plaintext):
 #
 def aes_decrypt(key, nonce, ciphertext):
     # Bryce
-    raise Exception("You need to implement this function!")
+    decryptor = Cipher(algorithms.AES256(key = key), modes.CTR(nonce = nonce)).decryptor()
+    plaintext = decryptor.update(data = ciphertext) + decryptor.finalize()
+    return plaintext
 
 #
 # Encrypts a plaintext message using AES-256-CTR using a randomly generated
@@ -139,7 +143,10 @@ def aes_decrypt(key, nonce, ciphertext):
 #
 def aes_encrypt_with_random_session_key(plaintext):
     # Bryce
-    raise Exception("You need to implement this function!")
+    key = secrets.randbits(k = 256).to_bytes()
+    nonce = secrets.randbits(k = 128).to_bytes()
+    ciphertext = aes_encrypt(key = key, nonce = nonce, plaintext = plaintext)
+    return (key, nonce, ciphertext)
 
 #
 # Encrypt a message using AES-256-CTR and a random session key, which in turn
