@@ -66,7 +66,15 @@ def rsa_deserialize_public_key(pem_pubkey):
 #
 def rsa_encrypt(public_key, plaintext):
     # Chris
-    raise Exception("You need to implement this function!")
+    ciphertext = public_key.encrypt(
+        plaintext.encode('utf-8'),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return ciphertext
 
 #
 # Arguments:
@@ -78,7 +86,16 @@ def rsa_encrypt(public_key, plaintext):
 #
 def rsa_decrypt(private_key, ciphertext):
     # Chris
-    raise Exception("You need to implement this function!")
+    plaintext = private_key.decrypt(
+        ciphertext,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+
+    return plaintext.decode('utf-8')
 
 #
 # Encrypts a plaintext message using AES-256 in CTR (Counter) mode.
