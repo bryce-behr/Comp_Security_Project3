@@ -198,7 +198,7 @@ def aes_encrypt_with_random_session_key(plaintext):
 #   ciphertext: The AES-256-CTR-encrypted message (as a raw byte string).
 #
 def encrypt_message_with_aes_and_rsa(public_key, plaintext):
-    # We'll get this once the other ones are done
+    # Bryce
     aesMessage = aes_encrypt_with_random_session_key(plaintext)
     encrypted_session_key = rsa_encrypt(public_key = public_key, plaintext = aesMessage[0])
     return (encrypted_session_key, aesMessage[1], aesMessage[2])
@@ -220,7 +220,7 @@ def encrypt_message_with_aes_and_rsa(public_key, plaintext):
 #
 def decrypt_message_with_aes_and_rsa(
         private_key, encrypted_session_key, nonce, ciphertext):
-    # We'll get this once the other ones are done
+    # Bryce
     decrypted_session_key = rsa_decrypt(private_key=private_key, ciphertext=encrypted_session_key)
     decrypted_message = aes_decrypt(key=decrypted_session_key, nonce=nonce, ciphertext=ciphertext)
     return decrypted_message
