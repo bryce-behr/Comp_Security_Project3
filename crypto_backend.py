@@ -27,7 +27,7 @@ def rsa_gen_keypair():
 #   storage.
 #
 def rsa_serialize_private_key(private_key):
-    return private_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+    return private_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode("utf-8")
 
 #
 # Argument: A string containing an unencrypted RSA private key in PEM format.
@@ -37,7 +37,7 @@ def rsa_serialize_private_key(private_key):
 # Returns: An rsa.RSAPrivateKey object consisting of the deserialized key.
 #
 def rsa_deserialize_private_key(pem_privkey):
-    return serialization.load_pem_private_key(pem_privkey, None)
+    return serialization.load_pem_private_key(pem_privkey.encode(), None)
 
 #
 # Argument: An rsa.RSAPublicKey object
@@ -46,7 +46,7 @@ def rsa_deserialize_private_key(pem_privkey):
 #   SubjectPublicKeyInfo format and PEM encoding.
 #
 def rsa_serialize_public_key(public_key):
-    return public_key.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+    return public_key.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode("utf-8")
 
 #
 # Argument: A string containing an RSA public key in PEM format.
@@ -54,7 +54,7 @@ def rsa_serialize_public_key(public_key):
 # Returns: An rsa.RSAPublicKey object consisting of the deserialized key.
 #
 def rsa_deserialize_public_key(pem_pubkey):
-    return serialization.load_pem_public_key(pem_pubkey)
+    return serialization.load_pem_public_key(pem_pubkey.encode())
 
 #
 # Arguments:
@@ -67,7 +67,7 @@ def rsa_deserialize_public_key(pem_pubkey):
 def rsa_encrypt(public_key, plaintext):
     # Chris
     ciphertext = public_key.encrypt(
-        plaintext.encode('utf-8'),
+        plaintext,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
@@ -95,7 +95,7 @@ def rsa_decrypt(private_key, ciphertext):
         )
     )
 
-    return plaintext.decode('utf-8')
+    return plaintext
 
 #
 # Encrypts a plaintext message using AES-256 in CTR (Counter) mode.
@@ -160,8 +160,8 @@ def aes_decrypt(key, nonce, ciphertext):
 #
 def aes_encrypt_with_random_session_key(plaintext):
     # Bryce
-    key = secrets.randbits(k = 256).to_bytes()
-    nonce = secrets.randbits(k = 128).to_bytes()
+    key = secrets.token_bytes(32)
+    nonce = secrets.token_bytes(16)
     ciphertext = aes_encrypt(key = key, nonce = nonce, plaintext = plaintext)
     return (key, nonce, ciphertext)
 
