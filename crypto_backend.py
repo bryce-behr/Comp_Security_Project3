@@ -28,7 +28,11 @@ def rsa_gen_keypair():
 #
 def rsa_serialize_private_key(private_key):
     # Tommy
-    return private_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode("utf-8")
+    return private_key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption()
+        ).decode("utf-8")
 
 #
 # Argument: A string containing an unencrypted RSA private key in PEM format.
@@ -39,7 +43,10 @@ def rsa_serialize_private_key(private_key):
 #
 def rsa_deserialize_private_key(pem_privkey):
     # Tommy
-    return serialization.load_pem_private_key(pem_privkey.encode(), None)
+    return serialization.load_pem_private_key(
+        pem_privkey.encode(), 
+        None
+        )
 
 #
 # Argument: An rsa.RSAPublicKey object
@@ -49,7 +56,10 @@ def rsa_deserialize_private_key(pem_privkey):
 #
 def rsa_serialize_public_key(public_key):
     # Tommy
-    return public_key.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode("utf-8")
+    return public_key.public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo
+        ).decode("utf-8")
 
 #
 # Argument: A string containing an RSA public key in PEM format.
@@ -58,7 +68,9 @@ def rsa_serialize_public_key(public_key):
 #
 def rsa_deserialize_public_key(pem_pubkey):
     # Tommy
-    return serialization.load_pem_public_key(pem_pubkey.encode())
+    return serialization.load_pem_public_key(
+        pem_pubkey.encode()
+        )
 
 #
 # Arguments:
