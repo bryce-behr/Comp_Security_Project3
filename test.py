@@ -17,4 +17,7 @@ delete = '/posts/delete/<int:id>'
 #x = requests.get(baseUrl+viewRange+"226"+"/"+"250")
 #x = requests.get(baseUrl+latest)
 
-print(x.text)
+try:
+    print(x.text) 
+except:
+    print("error")
