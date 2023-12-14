@@ -91,15 +91,19 @@ sg.theme("Light Green 5")
 MONOSPACE_FONT = "Courier Prime" # Better font that I have installed on my machine
 
 layout = [
-        [sg.Text("Enter plaintext, ciphertext, or public/private key:"),
-         sg.Button("Clear"), sg.Push(), sg.Button("Run Benchmarks")],
-        [sg.Multiline(size=(100,20), font=(MONOSPACE_FONT, 12),
-                      key="_notepad")],
-        [sg.Button("Encrypt"), sg.Button("Decrypt"),
-         sg.Text("Key to use (0 loaded):", key="_keyToUseLabel"),
+        # [sg.Text("Enter plaintext, ciphertext, or public/private key:"),
+        #  sg.Button("Clear"), sg.Push(), sg.Button("Run Benchmarks")],
+        [sg.Multiline(size=(110,20), font=(MONOSPACE_FONT, 12),
+                      key="_notepad", disabled = True)],
+        [sg.InputText(size = (135, 1)),
+         sg.Button("Send")],
+        #    sg.Button("Encrypt"), sg.Button("Decrypt"),
+        [sg.Text("Account:", key="_keyToUseLabel"),
          sg.Combo([], size=35, readonly=True, key="_keylist"),
-         sg.Button("Generate New Keypair"), sg.Button("Import Key"),
-         sg.Button("Export Private Key"), sg.Button("Export Public Key")],
+         sg.Button("New Account"), sg.Button("Import Account"),
+         sg.Button("Export Account to File"),
+         sg.Text("Target:"), 
+         sg.Combo([], size = 35, readonly = True, key="_targetList")],
           ]
 
 window = sg.Window("Encrypted Messenger", layout)
@@ -252,7 +256,9 @@ while True:
         # unscathed.)
         window["_notepad"].update(plaintext.decode('utf-8'))
 
-    elif event == "Generate New Keypair":
+    elif event == "New Account":
+        ##TODO: post public key with our signature to pastebin. Save private key to a file. When posting public key it will return an ID that needs stored
+
         # Ask the user for the name of the keypair's owner
         owner = sg.popup_get_text(
                 "Enter the name of the user associated with this key:",
