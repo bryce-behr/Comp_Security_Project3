@@ -50,6 +50,20 @@ class KeyringEntry:
             self.private = None
         else:
             raise Exception("Unrecognized key type!")
+        
+    def toJSON(self):
+        dictionary = {
+            'owner':self.owner,
+            'postid':self.postid,
+            'private':crypto_backend.rsa_serialize_private_key(self.private),
+            'public':crypto_backend.rsa_serialize_public_key(self.public)
+        }
+        return dictionary
+
+def JSONKeyring(json):
+    if json['private'] == None:
+        return KeyringEntry(crypto_backend.rsa_deserialize_public_key(json['public']), json['owner'], json['postid'])
+    return KeyringEntry(crypto_backend.rsa_deserialize_private_key(json['private']), json['owner'], json['postid'])
 
 #
 # Return a list of human-readable drop-down-list entries for all the keys in
@@ -72,6 +86,12 @@ def compute_keylist():
         keylist.append(entry)
 
     return keylist
+
+def keylist_contains(owner):
+    for key in keyring:
+        if owner == key.owner:
+            return True
+    return False
 
 def compute_targetlist():
     targetlist = []
@@ -212,17 +232,27 @@ def MainLoop():
             jsonString = json.JSONEncoder().encode(packaged_msg)
             requests.post(baseUrl+create, data = {'contents': 'bht-msg'+jsonString})
 
-            messages.append(json.loads(jsonString))
+            packaged_msg['plaintext'] = plaintext.decode()
+            packaged_msg.pop('ciphertext')
+            packaged_msg.pop('signature')
+            packaged_msg.pop('nonce')
+            packaged_msg.pop('sessionkey')
+            print(packaged_msg)
+            messages.append(packaged_msg)
 
             tempString = ""
             if account_name != target_name:
                 for message in messages:
                     if message['sender'] == account_name or message['sender'] == target_name:
                         if message['target'] == account_name:
-                            text = decryptMessage(message, account_key).decode()
+                            if 'plaintext' in message:
+                                text = message['plaintext']
+                            else:
+                                text = decryptMessage(message, account_key).decode()
                             tempString += "["+message['sender']+"] "+text+'\n'
                         elif message['target'] == target_name:
-                            tempString += ('\t\t\t\t['+message['sender']+"] ")+'\n'
+                            text = message['plaintext']
+                            tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
 
             window["_notepad"].update(tempString)
 
@@ -499,10 +529,14 @@ def MainLoop():
                     for message in messages:
                         if message['sender'] == account_name or message['sender'] == target_name:
                             if message['target'] == account_name:
-                                text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
+                                if 'plaintext' in message:
+                                    text = message['plaintext']
+                                else:
+                                    text = decryptMessage(message, account_key).decode()
                                 tempString += "["+message['sender']+"] "+text+'\n'
                             elif message['target'] == target_name:
-                                tempString += ('\t\t\t\t['+message['sender']+']')+'\n'
+                                text = message['plaintext']
+                                tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
 
                 window["_notepad"].update(tempString)
 
@@ -510,6 +544,14 @@ def MainLoop():
     lastPost = open('System/lastPost.txt', 'w')
     lastPost.write(str(max))
     lastPost.close()
+    saved = open('System/savedMessages.txt', 'w')
+    json.dump(messages, saved)
+    saved.close()
+    
+    contacts = open('System/contacts.txt', 'w')
+    jsonTargets = [target.toJSON() for target in targets]
+    json.dump(jsonTargets, contacts)
+    contacts.close()
 
 def liveUpdate():
     global max
@@ -533,7 +575,8 @@ def liveUpdate():
                             add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
                             targetKeys.append(jsonizedPost['pubkey'])
                     elif contents[0:3] == 'msg':
-                        messages.append(jsonizedPost)
+                        if not keylist_contains(jsonizedPost['sender']):
+                            messages.append(jsonizedPost)
 
             account_name = keyring[window["_keylist"].widget.current()].owner
             selected_tgt = window["_targetList"].widget.current()
@@ -546,10 +589,14 @@ def liveUpdate():
             for message in messages:
                 if message['sender'] == account_name or message['sender'] == target_name:
                     if message['target'] == account_name:
-                            text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
-                            tempString += "["+message['sender']+"] "+text+'\n'
+                        if 'plaintext' in message:
+                            text = message['plaintext']
+                        else:
+                            text = decryptMessage(message, account_key).decode()
+                        tempString += "["+message['sender']+"] "+text+'\n'
                     elif message['target'] == target_name:
-                        tempString += ('\t\t\t\t['+message['sender']+"] ")+'\n'
+                        text = message['plaintext']
+                        tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
 
             window["_notepad"].update(tempString)
 
@@ -651,7 +698,16 @@ if __name__ == '__main__':
         account = json.loads(r.readline())
         add_keyring_entry(KeyringEntry(crypto_backend.rsa_deserialize_private_key(account['private_key']), account['owner'], account['id']))
         r.close()
-
+    
+    saved = open('System/savedMessages.txt', 'r')
+    messages.extend(json.load(saved))
+    saved.close()
+    
+    contacts = open('System/contacts.txt', 'r')
+    targets.extend([JSONKeyring(contact) for contact in json.load(contacts)])
+    contacts.close()
+    window["_targetList"].update(values = compute_targetlist())
+    
     max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
     
     lastPost = open('System/lastPost.txt', 'r')
@@ -672,7 +728,8 @@ if __name__ == '__main__':
                         add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
                         targetKeys.append(jsonizedPost['pubkey'])
                 elif contents[0:3] == 'msg':
-                    messages.append(jsonizedPost)
+                    if not keylist_contains(jsonizedPost['sender']):
+                        messages.append(jsonizedPost)
         min += 999
 
     jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
@@ -687,7 +744,8 @@ if __name__ == '__main__':
                     add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
                     targetKeys.append(jsonizedPost['pubkey'])
             elif contents[0:3] == 'msg':
-                messages.append(jsonizedPost)
+                    if not keylist_contains(jsonizedPost['sender']):
+                        messages.append(jsonizedPost)
 
     target_update_thread = threading.Thread(target=liveUpdate, daemon=True)
     target_update_thread.start()

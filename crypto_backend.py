@@ -36,6 +36,8 @@ def rsa_gen_keypair():
 #
 def rsa_serialize_private_key(private_key):
     # Tommy
+    if private_key == None:
+        return
     return private_key.private_bytes(
         serialization.Encoding.PEM,
         serialization.PrivateFormat.PKCS8,
