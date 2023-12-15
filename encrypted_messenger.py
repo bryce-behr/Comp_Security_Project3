@@ -50,6 +50,20 @@ class KeyringEntry:
             self.private = None
         else:
             raise Exception("Unrecognized key type!")
+        
+    def toJSON(self):
+        dictionary = {
+            'owner':self.owner,
+            'postid':self.postid,
+            'private':crypto_backend.rsa_serialize_private_key(self.private),
+            'public':crypto_backend.rsa_serialize_public_key(self.public)
+        }
+        return dictionary
+
+def JSONKeyring(json):
+    if json['private'] == None:
+        return KeyringEntry(crypto_backend.rsa_deserialize_public_key(json['public']), json['owner'], json['postid'])
+    return KeyringEntry(crypto_backend.rsa_deserialize_private_key(json['private']), json['owner'], json['postid'])
 
 #
 # Return a list of human-readable drop-down-list entries for all the keys in
@@ -64,14 +78,20 @@ def compute_keylist():
     for key in keyring:
         entry = key.owner
 
-        if key.private:
-            entry += " (public + private)"
-        else:
-            entry += " (public only)"
+        # if key.private:
+        #     entry += " (public + private)"
+        # else:
+        #     entry += " (public only)"
 
         keylist.append(entry)
 
     return keylist
+
+def keylist_contains(owner):
+    for key in keyring:
+        if owner == key.owner:
+            return True
+    return False
 
 def compute_targetlist():
     targetlist = []
@@ -80,6 +100,12 @@ def compute_targetlist():
         targetlist.append(entry)
 
     return targetlist
+
+def targetlist_contains(owner):
+    for target in targets:
+        if owner == target.owner:
+            return True
+    return False
 
 #
 # Add a key entry to "keyring", and update the drop-down list of all the
@@ -212,18 +238,27 @@ def MainLoop():
             jsonString = json.JSONEncoder().encode(packaged_msg)
             requests.post(baseUrl+create, data = {'contents': 'bht-msg'+jsonString})
 
-            messages.append(json.loads(jsonString))
+            packaged_msg['plaintext'] = plaintext.decode()
+            packaged_msg.pop('ciphertext')
+            packaged_msg.pop('signature')
+            packaged_msg.pop('nonce')
+            packaged_msg.pop('sessionkey')
+            print(packaged_msg)
+            messages.append(packaged_msg)
 
             tempString = ""
             if account_name != target_name:
                 for message in messages:
-                    # tempString += message['sender']
-                    # if message['target'] == account_name:
-                    #     tempString.append(message['sender'] + '\n')
-                    if message['target'] == account_name:
-                        tempString += message['sender']+'\n'
-                    elif message['sender'] == account_name:
-                        tempString += ('\t\t\t\t'+message['sender'])+'\n'
+                    if message['sender'] == account_name or message['sender'] == target_name:
+                        if message['target'] == account_name:
+                            if 'plaintext' in message:
+                                text = message['plaintext']
+                            else:
+                                text = decryptMessage(message, account_key).decode()
+                            tempString += "["+message['sender']+"] "+text+'\n'
+                        elif message['target'] == target_name:
+                            text = message['plaintext']
+                            tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
 
             window["_notepad"].update(tempString)
 
@@ -498,23 +533,34 @@ def MainLoop():
                 tempString = ""
                 if account_name != target_name:
                     for message in messages:
-                        # tempString += message['sender']
-                        # if message['target'] == account_name:
-                        #     tempString.append(message['sender'] + '\n')
-                        if message['target'] == account_name:
-                            tempString += message['sender']+'\n'
-                        elif message['sender'] == account_name:
-                            tempString += ('\t\t\t\t'+message['sender'])+'\n'
+                        if message['sender'] == account_name or message['sender'] == target_name:
+                            if message['target'] == account_name:
+                                if 'plaintext' in message:
+                                    text = message['plaintext']
+                                else:
+                                    text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
+                                tempString += "["+message['sender']+"] "+text+'\n'
+                            elif message['target'] == target_name:
+                                text = message['plaintext']
+                                tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
 
                 window["_notepad"].update(tempString)
 
     window.close()
+    lastPost = open('System/lastPost.txt', 'w')
+    lastPost.write(str(max))
+    lastPost.close()
+    saved = open('System/savedMessages.txt', 'w')
+    json.dump(messages, saved)
+    saved.close()
+    
+    contacts = open('System/contacts.txt', 'w')
+    jsonTargets = [target.toJSON() for target in targets]
+    json.dump(jsonTargets, contacts)
+    contacts.close()
 
 def liveUpdate():
-    max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
-
-    for target in targets:
-        targetKeys.append(target.public)
+    global max
 
     while True:
         time.sleep(5)
@@ -529,11 +575,11 @@ def liveUpdate():
                     contents = post['contents'][4:]
                     jsonizedPost =  json.loads(contents[3:])
                     if contents[0:3] == 'acc':
-                        if targetKeys.__contains__(jsonizedPost['pubkey']) == False:
+                        if targetlist_contains(jsonizedPost['sender']) == False:
                             add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
-                            targetKeys.append(jsonizedPost['pubkey'])
                     elif contents[0:3] == 'msg':
-                        messages.append(jsonizedPost)
+                        if not keylist_contains(jsonizedPost['sender']):
+                            messages.append(jsonizedPost)
 
             account_name = keyring[window["_keylist"].widget.current()].owner
             selected_tgt = window["_targetList"].widget.current()
@@ -544,13 +590,58 @@ def liveUpdate():
 
             tempString = ""
             for message in messages:
-                if message['target'] == account_name:
-                    tempString += message['sender']+'\n'
-                elif message['sender'] == account_name:
-                    tempString += ('\t\t\t\t'+message['sender'])+'\n'
+                if message['sender'] == account_name or message['sender'] == target_name:
+                    if message['target'] == account_name:
+                        if 'plaintext' in message:
+                            text = message['plaintext']
+                        else:
+                            text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
+                        tempString += "["+message['sender']+"] "+text+'\n'
+                    elif message['target'] == target_name:
+                        text = message['plaintext']
+                        tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
 
             window["_notepad"].update(tempString)
 
+def decryptMessage(msg, private_key):
+    try:
+        # N.B.: The b64decode() function doesn't require us to explicitly
+        # convert the string inputs into raw byte strings. Unlike
+        # b64encode(), it will automatically interpret an input string as
+        # ASCII (which is enough for the full base64 alphabet).
+        encrypted_session_key = b64decode(
+                msg['sessionkey'], validate = True)
+        nonce = b64decode(msg['nonce'], validate = True)
+        ciphertext = b64decode(msg['ciphertext'], validate = True)
+    except binascii.Error:
+        # This will only trigger if characters other than A-Z, a-z, 0-9,
+        # +, or / (or = for length padding at the end) are found in the
+        # input. Corruptions that produce a legitimate base64 character
+        # cannot be detected and will silently change the data.
+        #
+        # (In the next project, we will learn how to use authenticated
+        # encryption to detect corruption! 🙂)
+        #
+        # Note that we could have set validate = False (the default) in
+        # the b64decode() calls above; but this will silently skip the
+        # bad characters, which would render the entire rest of the
+        # message unreadable (since the ciphertext would become
+        # desynchronized with the keystream).
+        sg.popup("Error: Invalid characters found in base64 input.",
+                title = "Error Decrypting Message")
+        return
+
+    # Decrypt the session key using RSA, and then the message using AES
+    # with the session key and nonce.
+    try:
+        plaintext = crypto_backend.decrypt_message_with_aes_and_rsa(
+                private_key, encrypted_session_key, nonce, ciphertext)
+    except ValueError as e:
+        # The cryptography library threw an error trying to decrypt the
+        # message. Report it and cancel.
+        sg.popup_scrolled(e, title = "Error Decrypting Message")
+        return
+    return plaintext
 
 baseUrl = 'http://cs448lnx101.gcc.edu'
 create = '/posts/create'
@@ -565,9 +656,10 @@ prefix = "bht-acc"
 # A list of KeyringEntries (RSA keys) that have been loaded into the app.
 keyring = []
 targets = []
-targetKeys = []
 
 messages = []
+
+max = 0
 
 ######################################################################
 # Define the main window's layout and instantiate it
@@ -607,27 +699,54 @@ if __name__ == '__main__':
         r = open('Accounts/'+file, 'r')
         account = json.loads(r.readline())
         add_keyring_entry(KeyringEntry(crypto_backend.rsa_deserialize_private_key(account['private_key']), account['owner'], account['id']))
-
+        r.close()
+    
+    saved = open('System/savedMessages.txt', 'r')
+    messages.extend(json.load(saved))
+    saved.close()
+    
+    contacts = open('System/contacts.txt', 'r')
+    targets.extend([JSONKeyring(contact) for contact in json.load(contacts)])
+    contacts.close()
+    window["_targetList"].update(values = compute_targetlist())
+    
     max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
-    min = max-999
-    if min <= 1 : min = 1
+    
+    lastPost = open('System/lastPost.txt', 'r')
+    min = int(lastPost.readline())
+    lastPost.close()
+    
+    # just in case the pastebin gets over 1k posts
+    while max-min >= 999:
+        jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(min+998)).text)
+        posts = jsonized['posts']
+        
+        for post in posts:
+            if(post['contents'][0:4] == 'bht-'):
+                contents = post['contents'][4:]
+                jsonizedPost =  json.loads(contents[3:])
+                if contents[0:3] == 'acc':
+                    if targetlist_contains(jsonizedPost['owner']) == False:
+                        add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
+                elif contents[0:3] == 'msg':
+                    if not keylist_contains(jsonizedPost['sender']):
+                        messages.append(jsonizedPost)
+        min += 999
 
     jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
-    posts = jsonized['posts']        
+    posts = jsonized['posts']   
 
     for post in posts:
         if(post['contents'][0:4] == 'bht-'):
             contents = post['contents'][4:]
             jsonizedPost =  json.loads(contents[3:])
             if contents[0:3] == 'acc':
-                if targetKeys.__contains__(jsonizedPost['pubkey']) == False:
+                if targetlist_contains(jsonizedPost['owner']) == False:
                     add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
-                    targetKeys.append(jsonizedPost['pubkey'])
             elif contents[0:3] == 'msg':
-                messages.append(jsonizedPost)
+                    if not keylist_contains(jsonizedPost['sender']):
+                        messages.append(jsonizedPost)
 
-
-    
     target_update_thread = threading.Thread(target=liveUpdate, daemon=True)
     target_update_thread.start()
 
