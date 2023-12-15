@@ -507,10 +507,12 @@ def MainLoop():
                 window["_notepad"].update(tempString)
 
     window.close()
+    lastPost = open('System/lastPost.txt', 'w')
+    lastPost.write(str(max))
+    lastPost.close()
 
 def liveUpdate():
-    max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
-
+    global max
     for target in targets:
         targetKeys.append(target.public)
 
@@ -608,6 +610,8 @@ targetKeys = []
 
 messages = []
 
+max = 0
+
 ######################################################################
 # Define the main window's layout and instantiate it
 ######################################################################
@@ -646,13 +650,33 @@ if __name__ == '__main__':
         r = open('Accounts/'+file, 'r')
         account = json.loads(r.readline())
         add_keyring_entry(KeyringEntry(crypto_backend.rsa_deserialize_private_key(account['private_key']), account['owner'], account['id']))
+        r.close()
 
     max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
-    min = max-999
-    if min <= 1 : min = 1
+    
+    lastPost = open('System/lastPost.txt', 'r')
+    min = int(lastPost.readline())
+    lastPost.close()
+    
+    # just in case the pastebin gets over 1k posts
+    while max-min >= 999:
+        jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(min+998)).text)
+        posts = jsonized['posts']
+        
+        for post in posts:
+            if(post['contents'][0:4] == 'bht-'):
+                contents = post['contents'][4:]
+                jsonizedPost =  json.loads(contents[3:])
+                if contents[0:3] == 'acc':
+                    if targetKeys.__contains__(jsonizedPost['pubkey']) == False:
+                        add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
+                        targetKeys.append(jsonizedPost['pubkey'])
+                elif contents[0:3] == 'msg':
+                    messages.append(jsonizedPost)
+        min += 999
 
     jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
-    posts = jsonized['posts']        
+    posts = jsonized['posts']   
 
     for post in posts:
         if(post['contents'][0:4] == 'bht-'):
@@ -665,8 +689,6 @@ if __name__ == '__main__':
             elif contents[0:3] == 'msg':
                 messages.append(jsonizedPost)
 
-
-    
     target_update_thread = threading.Thread(target=liveUpdate, daemon=True)
     target_update_thread.start()
 
