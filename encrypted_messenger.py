@@ -78,10 +78,10 @@ def compute_keylist():
     for key in keyring:
         entry = key.owner
 
-        if key.private:
-            entry += " (public + private)"
-        else:
-            entry += " (public only)"
+        # if key.private:
+        #     entry += " (public + private)"
+        # else:
+        #     entry += " (public only)"
 
         keylist.append(entry)
 
