@@ -119,7 +119,7 @@ while True:
     elif event == "Clear":
         window["_notepad"].update("")
 
-    elif event == "Encrypt":
+    elif event == "Send":
         # PySimpleGUI unfortunately doesn't provide a "clean" way to get the
         # numeric index of the currently-selected element in a Combo
         # (drop-down box); all it can do is give us the currently-displayed
@@ -387,36 +387,6 @@ while True:
 
         # Display the JSON in the notepad area.
         window["_notepad"].update(jsonified)
-
-    elif event == "Run Benchmarks":
-        # Use a custom popup window so we can run the benchmarks in the
-        # background and close the popup when they're done.
-        popup_window = sg.Window("Running Benchmarks",
-                                 [[sg.Text("Running benchmarks, please wait "
-                                          "(this will take a bit)...")]],
-                                 modal = True)
-
-        # We need to call read() at least once on the window to get it to
-        # show up. "timeout = 0" means that the call will return immediately
-        # (rather than waiting for the window to generate an event in
-        # response to user interaction - which isn't likely to come, since we
-        # don't have any clickable elments in it), allowing us to continue
-        # and actually run the benchmarks. The window will then stay open
-        # until we close it.
-        #
-        # Since we won't call read() again until we close the window, the
-        # window will remain "grayed out" and not respond to user interaction
-        # (including the "Close" button) - which is the desired behavior
-        # here, since we don't have a way to interrupt the benchmark process
-        # until it's done.
-        event, values = popup_window.read(timeout = 0)
-
-        bench_results = crypto_backend.benchmark()
-        popup_window.close()
-
-        sg.popup_scrolled(bench_results, size=(75, 10),
-                          title = "Benchmark Results",
-                          font = (MONOSPACE_FONT, 10))
 
 
 window.close()
