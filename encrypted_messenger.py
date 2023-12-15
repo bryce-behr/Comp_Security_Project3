@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import binascii
 import threading
 import requests
 import PySimpleGUI as sg
@@ -108,19 +109,6 @@ def add_target(target):
 ######################################################################
 # Main event loop for window
 ######################################################################
-    # max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
-    # min = max-999
-    # if min <= 1 : min = 1
-
-    # jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
-    # posts = jsonized['posts']        
-
-    # for post in posts:
-    #     if(post['contents'][0:7] == "bht-app"):
-    #         jsonizedPost =  json.loads(post['contents'][7:])
-    #         print(jsonizedPost)
-    #         add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
-
 def MainLoop():
     while True:
         event, values = window.read()
@@ -199,14 +187,30 @@ def MainLoop():
                     }
             
             jsonString = json.JSONEncoder().encode(packaged_msg)
-            # requests.post(baseUrl+create, data = {'contents': prefix+jsonString})
+            requests.post(baseUrl+create, data = {'contents': 'bht-msg'+jsonString})
 
-            # add to the current display as outgoing message, Display the JSON in the notepad area.
-            #TODO: save this to conversation file as well
-            notepadText = values["_notepad"].encode('utf-8').decode('ascii')
-            if notepadText.strip() != "":
-                notepadText += "\n"
-            window["_notepad"].update(notepadText+"["+account_name+"] - "+plaintext.decode('ascii')+"\n")
+            messages.append(json.loads(jsonString))
+            print(jsonString)
+
+            tempString = ""
+            if account_name != target_name:
+                for message in messages:
+                    # tempString += message['sender']
+                    # if message['target'] == account_name:
+                    #     tempString.append(message['sender'] + '\n')
+                    if message['target'] == account_name:
+                        tempString += message['sender']+'\n'
+                    elif message['sender'] == account_name:
+                        tempString += ('\t\t\t\t'+message['sender'])+'\n'
+
+            window["_notepad"].update(tempString)
+
+            # # add to the current display as outgoing message, Display the JSON in the notepad area.
+            # #TODO: save this to conversation file as well
+            # notepadText = values["_notepad"].encode('utf-8').decode('ascii')
+            # if notepadText.strip() != "":
+            #     notepadText += "\n"
+            # window["_notepad"].update(notepadText+"["+account_name+"] - "+plaintext.decode('ascii')+"\n")
             
             #clear message box
             window["_messageBox"].update("")
@@ -301,6 +305,15 @@ def MainLoop():
                 # The user clicked "Cancel"; stop processing this event.
                 continue
 
+            targetOwners = []
+            for target in targets:
+                targetOwners.append(target.owner)
+
+            if targetOwners.__contains__(owner):
+                sg.popup(f"This username is already in use.",
+                    title = "This username is already in use.")
+                continue
+
             # rsa_gen_keypair() will return an RSAPrivateKey object, which
             # includes both the public and private components of the keypair.
             keypair = crypto_backend.rsa_gen_keypair()
@@ -338,16 +351,6 @@ def MainLoop():
 
             sg.popup(f"Successfully generated a new keypair for {owner}!",
                     title = "Successfully Generated Keypair")
-
-        elif event == "Send":
-            print()
-            # jsonized = json.loads(requests.get(baseUrl+viewRange+'400/430').text)
-            # posts = jsonized['posts']        
-
-            # for post in posts:
-            #     if(post['contents'][0:7] == "bht-"):
-            #         print(str(post['id']) + 'deleted')
-            #         json.loads(requests.post(baseUrl+delete+str(post['id']), data = {'hash' : hashlib.sha1(post['contents'].encode('utf-8')).hexdigest()}).text)
 
         elif event == "Import Key":
             # We will interpret the notepad contents as a JSON dictionary that we
@@ -463,9 +466,25 @@ def MainLoop():
             # Display the JSON in the notepad area.
             window["_notepad"].update(jsonified_public)
             
-        elif event == "_targetList":
+        elif event == "_targetList" or event == "_keylist":
             #TODO: switch conversations
-            print()
+            account_name = keyring[window["_keylist"].widget.current()].owner
+            selected_tgt = window["_targetList"].widget.current()
+            if selected_tgt in range(0, len(targets)):
+                target_name = targets[selected_tgt].owner
+
+                tempString = ""
+                if account_name != target_name:
+                    for message in messages:
+                        # tempString += message['sender']
+                        # if message['target'] == account_name:
+                        #     tempString.append(message['sender'] + '\n')
+                        if message['target'] == account_name:
+                            tempString += message['sender']+'\n'
+                        elif message['sender'] == account_name:
+                            tempString += ('\t\t\t\t'+message['sender'])+'\n'
+
+                window["_notepad"].update(tempString)
 
     window.close()
 
@@ -480,16 +499,44 @@ def updateTargets():
         min = max
         max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
         print(str(time.localtime().tm_sec) + "  " + str(min) + "-" + str(max))
+        if min != max:
+            print(str(time.localtime().tm_sec) + "  " + str(min) + "-" + str(max))
 
-        jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
-        posts = jsonized['posts']        
+            jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
+            posts = jsonized['posts']        
 
-        for post in posts:
-            if(post['contents'][0:7] == "bht-app"):
-                jsonizedPost =  json.loads(post['contents'][7:])
-                if targetKeys.__contains__(jsonizedPost['pubkey']) == False:
-                    add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
-                    targetKeys.append(jsonizedPost['pubkey'])
+            for post in posts:
+                if(post['contents'][0:4] == 'bht-'):
+                    contents = post['contents'][4:]
+                    jsonizedPost =  json.loads(contents[3:])
+                    if contents[0:3] == 'acc':
+                        if targetKeys.__contains__(jsonizedPost['pubkey']) == False:
+                            add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
+                            targetKeys.append(jsonizedPost['pubkey'])
+                    elif contents[0:3] == 'msg':
+                        messages.append(jsonizedPost)
+
+            account_name = keyring[window["_keylist"].widget.current()].owner
+            selected_tgt = window["_targetList"].widget.current()
+            if selected_tgt not in range(0, len(targets)):
+                sg.popup("No Target selected!")
+                continue
+            target_name = targets[selected_tgt].owner
+
+            print(str(account_name) + " " + str(target_name))
+
+
+            tempString = ""
+            for message in messages:
+                # tempString += message['sender']
+                # if message['target'] == account_name:
+                #     tempString.append(message['sender'] + '\n')
+                if message['target'] == account_name:
+                    tempString += message['sender']+'\n'
+                elif message['sender'] == account_name:
+                    tempString += ('\t\t\t\t'+message['sender'])+'\n'
+
+            window["_notepad"].update(tempString)
 
 
 baseUrl = 'http://cs448lnx101.gcc.edu'
@@ -500,12 +547,14 @@ viewRange = '/posts/get/'# append <int:from_id>/<int:to_id>, maximum range 1000
 latest = '/posts/get/latest'
 delete = '/posts/delete/'#<int:id>
 
-prefix = "bht-app"
+prefix = "bht-acc"
 
 # A list of KeyringEntries (RSA keys) that have been loaded into the app.
 keyring = []
 targets = []
 targetKeys = []
+
+messages = []
 
 ######################################################################
 # Define the main window's layout and instantiate it
@@ -530,7 +579,7 @@ layout = [
         sg.Button("Send")],
         #    sg.Button("Encrypt"), sg.Button("Decrypt"),
         [sg.Text("Account:", key="_keyToUseLabel"),
-        sg.Combo([], size=35, readonly=True, key="_keylist"),
+        sg.Combo([], size=35, readonly=True, key="_keylist", enable_events=True),
         sg.Button("New Account"), sg.Button("Import Account"),
         sg.Button("Export Account to File"),
         sg.Text("Target:"), 
@@ -554,11 +603,17 @@ if __name__ == '__main__':
     posts = jsonized['posts']        
 
     for post in posts:
-        if(post['contents'][0:7] == prefix):
-            jsonizedPost =  json.loads(post['contents'][7:])
-            if targetKeys.__contains__(jsonizedPost['pubkey']) == False:
-                add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
-                targetKeys.append(jsonizedPost['pubkey'])
+        if(post['contents'][0:4] == 'bht-'):
+            contents = post['contents'][4:]
+            jsonizedPost =  json.loads(contents[3:])
+            if contents[0:3] == 'acc':
+                if targetKeys.__contains__(jsonizedPost['pubkey']) == False:
+                    add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
+                    targetKeys.append(jsonizedPost['pubkey'])
+            elif contents[0:3] == 'msg':
+                messages.append(jsonizedPost)
+
+
     
     target_update_thread = threading.Thread(target=updateTargets, daemon=True)
     target_update_thread.start()
@@ -570,5 +625,5 @@ if __name__ == '__main__':
 
     # for post in posts:
     #     if(post['contents'][0:7] == prefix):
-    #         print(str(post['id']) + 'deleted')
+    #         print(str(post['id']) + ' deleted')
     #         json.loads(requests.post(baseUrl+delete+str(post['id']), data = {'hash' : hashlib.sha1(post['contents'].encode('utf-8')).hexdigest()}).text)
