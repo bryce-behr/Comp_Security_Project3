@@ -487,7 +487,7 @@ def MainLoop():
 
     window.close()
 
-def updateTargets():
+def liveUpdate():
     max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
 
     for target in targets:
@@ -605,7 +605,7 @@ if __name__ == '__main__':
 
 
     
-    target_update_thread = threading.Thread(target=updateTargets, daemon=True)
+    target_update_thread = threading.Thread(target=liveUpdate, daemon=True)
     target_update_thread.start()
 
     MainLoop()
