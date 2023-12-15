@@ -10,10 +10,11 @@ latest = '/posts/get/latest'
 delete = '/posts/delete/<int:id>'
         #field hash = SHA-1 hash of contents
 
+x = None
 #fields = {'contents': 'testing: I like pancakes'}
 #print(fields)
 #x = requests.post(baseUrl+create, data = fields)
-#x = requests.get(baseUrl+view+"226")
+# x = requests.get(baseUrl+view+"226")
 #x = requests.get(baseUrl+viewRange+"226"+"/"+"250")
 #x = requests.get(baseUrl+latest)
 
