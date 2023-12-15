@@ -221,8 +221,9 @@ def MainLoop():
                     # if message['target'] == account_name:
                     #     tempString.append(message['sender'] + '\n')
                     if message['target'] == account_name:
-                        tempString += message['sender']+'\n'
-                    elif message['sender'] == account_name:
+                        text = decryptMessage(message, account_key).decode()
+                        tempString += "["+message['sender']+"] "+text+'\n'
+                    elif message['sender'] == target_name:
                         tempString += ('\t\t\t\t'+message['sender'])+'\n'
 
             window["_notepad"].update(tempString)
@@ -502,7 +503,8 @@ def MainLoop():
                         # if message['target'] == account_name:
                         #     tempString.append(message['sender'] + '\n')
                         if message['target'] == account_name:
-                            tempString += message['sender']+'\n'
+                            text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
+                            tempString += "["+message['sender']+"] "+text+'\n'
                         elif message['sender'] == account_name:
                             tempString += ('\t\t\t\t'+message['sender'])+'\n'
 
@@ -545,12 +547,52 @@ def liveUpdate():
             tempString = ""
             for message in messages:
                 if message['target'] == account_name:
-                    tempString += message['sender']+'\n'
+                        text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
+                        tempString += "["+message['sender']+"] "+text+'\n'
                 elif message['sender'] == account_name:
                     tempString += ('\t\t\t\t'+message['sender'])+'\n'
 
             window["_notepad"].update(tempString)
 
+def decryptMessage(msg, private_key):
+    try:
+        # N.B.: The b64decode() function doesn't require us to explicitly
+        # convert the string inputs into raw byte strings. Unlike
+        # b64encode(), it will automatically interpret an input string as
+        # ASCII (which is enough for the full base64 alphabet).
+        encrypted_session_key = b64decode(
+                msg['sessionkey'], validate = True)
+        nonce = b64decode(msg['nonce'], validate = True)
+        ciphertext = b64decode(msg['ciphertext'], validate = True)
+    except binascii.Error:
+        # This will only trigger if characters other than A-Z, a-z, 0-9,
+        # +, or / (or = for length padding at the end) are found in the
+        # input. Corruptions that produce a legitimate base64 character
+        # cannot be detected and will silently change the data.
+        #
+        # (In the next project, we will learn how to use authenticated
+        # encryption to detect corruption! 🙂)
+        #
+        # Note that we could have set validate = False (the default) in
+        # the b64decode() calls above; but this will silently skip the
+        # bad characters, which would render the entire rest of the
+        # message unreadable (since the ciphertext would become
+        # desynchronized with the keystream).
+        sg.popup("Error: Invalid characters found in base64 input.",
+                title = "Error Decrypting Message")
+        return
+
+    # Decrypt the session key using RSA, and then the message using AES
+    # with the session key and nonce.
+    try:
+        plaintext = crypto_backend.decrypt_message_with_aes_and_rsa(
+                private_key, encrypted_session_key, nonce, ciphertext)
+    except ValueError as e:
+        # The cryptography library threw an error trying to decrypt the
+        # message. Report it and cancel.
+        sg.popup_scrolled(e, title = "Error Decrypting Message")
+        return
+    return plaintext
 
 baseUrl = 'http://cs448lnx101.gcc.edu'
 create = '/posts/create'
