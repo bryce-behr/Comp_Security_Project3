@@ -217,14 +217,12 @@ def MainLoop():
             tempString = ""
             if account_name != target_name:
                 for message in messages:
-                    # tempString += message['sender']
-                    # if message['target'] == account_name:
-                    #     tempString.append(message['sender'] + '\n')
-                    if message['target'] == account_name:
-                        text = decryptMessage(message, account_key).decode()
-                        tempString += "["+message['sender']+"] "+text+'\n'
-                    elif message['sender'] == target_name:
-                        tempString += ('\t\t\t\t'+message['sender'])+'\n'
+                    if message['sender'] == account_name or message['sender'] == target_name:
+                        if message['target'] == account_name:
+                            text = decryptMessage(message, account_key).decode()
+                            tempString += "["+message['sender']+"] "+text+'\n'
+                        elif message['target'] == target_name:
+                            tempString += ('\t\t\t\t['+message['sender']+"] ")+'\n'
 
             window["_notepad"].update(tempString)
 
@@ -499,14 +497,12 @@ def MainLoop():
                 tempString = ""
                 if account_name != target_name:
                     for message in messages:
-                        # tempString += message['sender']
-                        # if message['target'] == account_name:
-                        #     tempString.append(message['sender'] + '\n')
-                        if message['target'] == account_name:
-                            text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
-                            tempString += "["+message['sender']+"] "+text+'\n'
-                        elif message['sender'] == account_name:
-                            tempString += ('\t\t\t\t'+message['sender'])+'\n'
+                        if message['sender'] == account_name or message['sender'] == target_name:
+                            if message['target'] == account_name:
+                                text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
+                                tempString += "["+message['sender']+"] "+text+'\n'
+                            elif message['target'] == target_name:
+                                tempString += ('\t\t\t\t['+message['sender']+']')+'\n'
 
                 window["_notepad"].update(tempString)
 
@@ -546,11 +542,12 @@ def liveUpdate():
 
             tempString = ""
             for message in messages:
-                if message['target'] == account_name:
-                        text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
-                        tempString += "["+message['sender']+"] "+text+'\n'
-                elif message['sender'] == account_name:
-                    tempString += ('\t\t\t\t'+message['sender'])+'\n'
+                if message['sender'] == account_name or message['sender'] == target_name:
+                    if message['target'] == account_name:
+                            text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
+                            tempString += "["+message['sender']+"] "+text+'\n'
+                    elif message['target'] == target_name:
+                        tempString += ('\t\t\t\t['+message['sender']+"] ")+'\n'
 
             window["_notepad"].update(tempString)
 
