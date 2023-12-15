@@ -95,7 +95,7 @@ def compute_keylist():
 def compute_targetlist():
     targetlist = []
     for target in targets:
-        entry = key.owner
+        entry = target.owner
         targetlist.append(entry)
 
     return targetlist
@@ -156,6 +156,20 @@ while(True):
             r = open('Accounts/'+file, 'r')
             account = json.loads(r.readline())
             add_keyring_entry(KeyringEntry(crypto_backend.rsa_deserialize_private_key(account['private_key']), account['owner']))
+
+        max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
+        min = max-999
+        if min <= 1 : min = 1
+
+        jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
+        posts = jsonized['posts']        
+
+        for post in posts:
+            if(post['contents'][0:7] == "bht-app"):
+                jsonizedPost =  json.loads(post['contents'][7:])
+                print(jsonizedPost)
+                add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
+
         break
 
 ######################################################################
