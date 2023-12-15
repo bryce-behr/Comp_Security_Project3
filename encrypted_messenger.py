@@ -190,7 +190,6 @@ def MainLoop():
             requests.post(baseUrl+create, data = {'contents': 'bht-msg'+jsonString})
 
             messages.append(json.loads(jsonString))
-            print(jsonString)
 
             tempString = ""
             if account_name != target_name:
@@ -498,10 +497,7 @@ def updateTargets():
         time.sleep(5)
         min = max
         max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
-        print(str(time.localtime().tm_sec) + "  " + str(min) + "-" + str(max))
         if min != max:
-            print(str(time.localtime().tm_sec) + "  " + str(min) + "-" + str(max))
-
             jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
             posts = jsonized['posts']        
 
@@ -523,14 +519,8 @@ def updateTargets():
                 continue
             target_name = targets[selected_tgt].owner
 
-            print(str(account_name) + " " + str(target_name))
-
-
             tempString = ""
             for message in messages:
-                # tempString += message['sender']
-                # if message['target'] == account_name:
-                #     tempString.append(message['sender'] + '\n')
                 if message['target'] == account_name:
                     tempString += message['sender']+'\n'
                 elif message['sender'] == account_name:
