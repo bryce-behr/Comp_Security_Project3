@@ -38,8 +38,9 @@ class KeyringEntry:
     # If it's a private key, we will extract the corresponding public key and
     # set both properties. Otherwise, we will set only the public key.
     #
-    def __init__(self, key, owner):
+    def __init__(self, key, owner, postid=-1):
         self.owner = owner
+        self.postid = postid
 
         if isinstance(key, RSAPrivateKey):
             self.private = key
@@ -49,16 +50,6 @@ class KeyringEntry:
             self.private = None
         else:
             raise Exception("Unrecognized key type!")
-        
-class Target:
-    def __init__(self, key, owner):
-        self.owner = owner
-        if isinstance(key, RSAPublicKey):
-            self.public = key
-            self.private = None
-        else:
-            raise Exception("Unrecognized key type!")
-        
 
 #
 # Return a list of human-readable drop-down-list entries for all the keys in
@@ -137,17 +128,49 @@ def MainLoop():
                 # been added to the keyring yet (the call to current() will
                 # return -1 if there are no items in the Combo), or (potentially)
                 # in case of a program bug.
-                sg.popup("No key selected!")
+                sg.popup("No account selected!")
                 continue
 
             # Get the private component of the selected account's keypair.
             account_key = keyring[selected_idx].private
             account_name = keyring[selected_idx].owner
+            account_post = keyring[selected_idx].postid
+            
+            #check to make sure that the public key is still posted on the pastebin
+            if account_post != -1:
+                if requests.get(baseUrl+view+str(account_post)).json()['error'] == True:
+                    # Serialize the selected key's public component to PEM format.
+                    pem = crypto_backend.rsa_serialize_public_key(
+                            keyring[selected_idx].public)
+                    packaged_public_key = {
+                            'owner': account_name,
+                            'pubkey': pem
+                            }
+                    jsonified_public = json.JSONEncoder().encode(packaged_public_key)
+
+                    post = json.loads(requests.post(baseUrl+create, data = {'contents': prefix+jsonified_public}).text)
+                    
+                    packaged_private_key = {
+                        'id': post['id'],
+                        'owner': account_name,
+                        'private_key': crypto_backend.rsa_serialize_private_key(account_key)
+                    }
+                    jsonified_private = json.JSONEncoder().encode(packaged_private_key)
+                    
+                    file = open('Accounts\\'+account_name+'.txt', 'w')
+                    file.write(jsonified_private)
+                    file.close()
+                    
+                    keyring[selected_idx].postid = post['id']
+                    
+                    
+
+                    
             
             # see above, repeated for targetlist
             selected_tgt = window["_targetList"].widget.current()
             if selected_tgt not in range(0, len(targets)):
-                sg.popup("No Target selected!")
+                sg.popup("No target selected!")
                 continue
             target_key = targets[selected_tgt].public
             target_name = targets[selected_tgt].owner
@@ -583,7 +606,7 @@ if __name__ == '__main__':
     for file in os.listdir('Accounts'):
         r = open('Accounts/'+file, 'r')
         account = json.loads(r.readline())
-        add_keyring_entry(KeyringEntry(crypto_backend.rsa_deserialize_private_key(account['private_key']), account['owner']))
+        add_keyring_entry(KeyringEntry(crypto_backend.rsa_deserialize_private_key(account['private_key']), account['owner'], account['id']))
 
     max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
     min = max-999
