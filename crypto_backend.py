@@ -8,6 +8,13 @@ import secrets # Use this for generating random byte strings (keys, etc.)
 from time import perf_counter
 from inspect import cleandoc # Cleans up indenting in multi-line strings (""")
 
+baseUrl = 'http://cs448lnx101.gcc.edu/'
+create = '/posts/create' # requires "contents" field
+view = '/posts/view/'#append int id
+viewRange = '/posts/get/'# append <int:from_id>/<int:to_id>, maximum range 1000
+latest = '/posts/get/latest'
+delete = '/posts/delete/<int:id>'
+
 #
 # Returns: An rsa.RSAPrivateKey object (which contains both the private key
 #   and its corresponding public key; use .public_key() to obtain it).

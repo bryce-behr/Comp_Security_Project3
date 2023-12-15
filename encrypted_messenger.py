@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import requests
 import PySimpleGUI as sg
 import json
 from base64 import b64encode, b64decode
@@ -20,6 +21,8 @@ view = '/posts/view/'#append int id
 viewRange = '/posts/get/'# append <int:from_id>/<int:to_id>, maximum range 1000
 latest = '/posts/get/latest'
 delete = '/posts/delete/'#<int:id>
+
+prefix = "bht-app"
 
 #
 # A class that represents an RSA keypair associated with the name of its
@@ -51,9 +54,19 @@ class KeyringEntry:
             self.private = None
         else:
             raise Exception("Unrecognized key type!")
+        
+class Target:
+    def __init__(self, key, owner):
+        self.owner = owner
+        if isinstance(key, RSAPublicKey):
+            self.public = key
+            self.private = None
+        else:
+            raise Exception("Unrecognized key type!")
 
 # A list of KeyringEntries (RSA keys) that have been loaded into the app.
 keyring = []
+targets = []
 
 #
 # Return a list of human-readable drop-down-list entries for all the keys in
@@ -77,6 +90,14 @@ def compute_keylist():
 
     return keylist
 
+def compute_targetlist():
+    targetlist = []
+    for target in targets:
+        entry = key.owner
+        targetlist.append(entry)
+
+    return targetlist
+
 #
 # Add a key entry to "keyring", and update the drop-down list of all the
 # keys that have been loaded into the app.
@@ -88,7 +109,10 @@ def add_keyring_entry(entry):
 
     window["_keylist"].update(values = compute_keylist(),
                               set_to_index = len(keyring) - 1)
-    window["_keyToUseLabel"].update(f"Key to use ({len(keyring)} loaded):")
+    
+def add_target(target):
+    targets.append(target)
+    window["_targetList"].update(values = compute_targetlist())
 
 ######################################################################
 # Define the main window's layout and instantiate it
@@ -109,7 +133,7 @@ layout = [
         #  sg.Button("Clear"), sg.Push(), sg.Button("Run Benchmarks")],
         [sg.Multiline(size=(110,20), font=(MONOSPACE_FONT, 12),
                       key="_notepad", disabled = True)],
-        [sg.InputText(size = (135, 1)),
+        [sg.InputText(size = (135, 1), key="_messageBox"),
          sg.Button("Send")],
         #    sg.Button("Encrypt"), sg.Button("Decrypt"),
         [sg.Text("Account:", key="_keyToUseLabel"),
@@ -117,7 +141,7 @@ layout = [
          sg.Button("New Account"), sg.Button("Import Account"),
          sg.Button("Export Account to File"),
          sg.Text("Target:"), 
-         sg.Combo([], size = 35, readonly = True, key="_targetList")],
+         sg.Combo([], size = 35, readonly = True, key="_targetList", enable_events=True)],
           ]
 
 window = sg.Window("Encrypted Messenger", layout)
@@ -155,8 +179,17 @@ while True:
             sg.popup("No key selected!")
             continue
 
-        # Get the public component of the selected recipient's keypair.
-        public_key = keyring[selected_idx].public
+        # Get the private component of the selected account's keypair.
+        account_key = keyring[selected_idx].private
+        account_name = keyring[selected_idx].owner
+        
+        # see above, repeated for targetlist
+        selected_tgt = window["_targetList"].widget.current()
+        if selected_tgt not in range(0, len(targets)):
+            sg.popup("No Target selected!")
+            continue
+        target_key = targets[selected_tgt].public
+        target_name = targets[selected_tgt].owner
 
         # Encrypt the contents of the notepad area with a randomly-generated
         # AES session key (which in turn is encrypted with RSA so it can be
@@ -166,10 +199,12 @@ while True:
         # (vs. a regular string), because only raw bytes are suitable for
         # input to the encryption functions. We use UTF-8 (Unicode) encoding
         # here to allow non-ASCII characters in messages.
-        plaintext = values["_notepad"].encode('utf-8')
+        plaintext = values["_messageBox"].encode('utf-8')
         (encrypted_session_key, nonce, ciphertext) = \
                 crypto_backend.encrypt_message_with_aes_and_rsa(
-                        public_key, plaintext)
+                        target_key, plaintext)
+        # create the signature for this collection of attributes
+        signature = crypto_backend.write_signature(account_key, encrypted_session_key+nonce+ciphertext)
 
         # Package the encrypted session key, nonce, and ciphertext as a JSON
         # object suitable for transmission to the recipient.
@@ -182,14 +217,26 @@ while True:
         # specified 'utf-8' here, but this is a good teachable moment to
         # explain the difference between the two...
         packaged_msg = {
+                'target': target_name,
+                'sender': account_name,
                 'sessionkey': b64encode(encrypted_session_key).decode('ascii'),
                 'nonce': b64encode(nonce).decode('ascii'),
-                'ciphertext': b64encode(ciphertext).decode('ascii')
+                'ciphertext': b64encode(ciphertext).decode('ascii'),
+                'signature': b64encode(signature).decode('ascii')
                 }
-        jsonified_public = json.JSONEncoder().encode(packaged_msg)
+        
+        jsonString = json.JSONEncoder().encode(packaged_msg)
+        # requests.post(baseUrl+create, data = {'contents': prefix+jsonString})
 
-        # Display the JSON in the notepad area.
-        window["_notepad"].update(jsonified_public)
+        # add to the current display as outgoing message, Display the JSON in the notepad area.
+        #TODO: save this to conversation file as well
+        notepadText = values["_notepad"].encode('utf-8').decode('ascii')
+        if notepadText.strip() != "":
+            notepadText += "\n"
+        window["_notepad"].update(notepadText+"["+account_name+"] - "+plaintext.decode('ascii')+"\n")
+        
+        #clear message box
+        window["_messageBox"].update("")
 
     elif event == "Decrypt":
         # Get the index of the currently-selected key (see comment above
@@ -303,7 +350,7 @@ while True:
                 }
         jsonified_public = json.JSONEncoder().encode(packaged_public_key)
 
-        requests.post(baseUrl+create, data = {'contents': 'bht-app'+jsonified_public})  
+        # requests.post(baseUrl+create, data = {'contents': prefix+jsonified_public})  
 
         packaged_private_key = {
             'owner': entry.owner,
@@ -441,6 +488,9 @@ while True:
 
         # Display the JSON in the notepad area.
         window["_notepad"].update(jsonified_public)
+        
+    elif event == "_targetList":
+        #TODO: switch conversations
 
 
 window.close()
