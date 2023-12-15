@@ -12,6 +12,8 @@ import requests
 
 import hashlib
 
+import os
+
 
 
 baseUrl = 'http://cs448lnx101.gcc.edu'
@@ -146,6 +148,16 @@ layout = [
 
 window = sg.Window("Encrypted Messenger", layout)
 
+window.finalize()
+
+while(True):
+    if window.finalize_in_progress == True:
+        for file in os.listdir('Accounts'):
+            r = open('Accounts/'+file, 'r')
+            account = json.loads(r.readline())
+            add_keyring_entry(KeyringEntry(crypto_backend.rsa_deserialize_private_key(account['private_key']), account['owner']))
+        break
+
 ######################################################################
 # Main event loop for window
 ######################################################################
@@ -153,7 +165,7 @@ while True:
     event, values = window.read()
 
     # Uncomment for debugging
-    #print(f"Event: {event}\nValues:{values}\n")
+    # print(f"Event: {event}\nValues:{values}\n")
 
     if event == sg.WIN_CLOSED:
         break
@@ -350,9 +362,10 @@ while True:
                 }
         jsonified_public = json.JSONEncoder().encode(packaged_public_key)
 
-        # requests.post(baseUrl+create, data = {'contents': prefix+jsonified_public})  
+        post = json.loads(requests.post(baseUrl+create, data = {'contents': prefix+jsonified_public}).text) 
 
         packaged_private_key = {
+            'id': post['id'],
             'owner': entry.owner,
             'private_key': crypto_backend.rsa_serialize_private_key(entry.private)
         }
@@ -491,6 +504,6 @@ while True:
         
     elif event == "_targetList":
         #TODO: switch conversations
-
+        print()
 
 window.close()
