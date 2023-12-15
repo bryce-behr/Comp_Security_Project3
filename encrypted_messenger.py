@@ -101,6 +101,12 @@ def compute_targetlist():
 
     return targetlist
 
+def targetlist_contains(owner):
+    for target in targets:
+        if owner == target.owner:
+            return True
+    return False
+
 #
 # Add a key entry to "keyring", and update the drop-down list of all the
 # keys that have been loaded into the app.
@@ -532,7 +538,7 @@ def MainLoop():
                                 if 'plaintext' in message:
                                     text = message['plaintext']
                                 else:
-                                    text = decryptMessage(message, account_key).decode()
+                                    text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
                                 tempString += "["+message['sender']+"] "+text+'\n'
                             elif message['target'] == target_name:
                                 text = message['plaintext']
@@ -555,8 +561,6 @@ def MainLoop():
 
 def liveUpdate():
     global max
-    for target in targets:
-        targetKeys.append(target.public)
 
     while True:
         time.sleep(5)
@@ -571,9 +575,8 @@ def liveUpdate():
                     contents = post['contents'][4:]
                     jsonizedPost =  json.loads(contents[3:])
                     if contents[0:3] == 'acc':
-                        if targetKeys.__contains__(jsonizedPost['pubkey']) == False:
+                        if targetlist_contains(jsonizedPost['sender']) == False:
                             add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
-                            targetKeys.append(jsonizedPost['pubkey'])
                     elif contents[0:3] == 'msg':
                         if not keylist_contains(jsonizedPost['sender']):
                             messages.append(jsonizedPost)
@@ -592,7 +595,7 @@ def liveUpdate():
                         if 'plaintext' in message:
                             text = message['plaintext']
                         else:
-                            text = decryptMessage(message, account_key).decode()
+                            text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
                         tempString += "["+message['sender']+"] "+text+'\n'
                     elif message['target'] == target_name:
                         text = message['plaintext']
@@ -653,7 +656,6 @@ prefix = "bht-acc"
 # A list of KeyringEntries (RSA keys) that have been loaded into the app.
 keyring = []
 targets = []
-targetKeys = []
 
 messages = []
 
@@ -724,9 +726,8 @@ if __name__ == '__main__':
                 contents = post['contents'][4:]
                 jsonizedPost =  json.loads(contents[3:])
                 if contents[0:3] == 'acc':
-                    if targetKeys.__contains__(jsonizedPost['pubkey']) == False:
+                    if targetlist_contains(jsonizedPost['owner']) == False:
                         add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
-                        targetKeys.append(jsonizedPost['pubkey'])
                 elif contents[0:3] == 'msg':
                     if not keylist_contains(jsonizedPost['sender']):
                         messages.append(jsonizedPost)
@@ -740,9 +741,8 @@ if __name__ == '__main__':
             contents = post['contents'][4:]
             jsonizedPost =  json.loads(contents[3:])
             if contents[0:3] == 'acc':
-                if targetKeys.__contains__(jsonizedPost['pubkey']) == False:
+                if targetlist_contains(jsonizedPost['owner']) == False:
                     add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
-                    targetKeys.append(jsonizedPost['pubkey'])
             elif contents[0:3] == 'msg':
                     if not keylist_contains(jsonizedPost['sender']):
                         messages.append(jsonizedPost)
