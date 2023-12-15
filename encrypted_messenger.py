@@ -7,6 +7,20 @@ from base64 import b64encode, b64decode
 import crypto_backend
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 
+import requests
+
+import hashlib
+
+
+
+baseUrl = 'http://cs448lnx101.gcc.edu'
+create = '/posts/create'
+        # field contents
+view = '/posts/view/'#append int id
+viewRange = '/posts/get/'# append <int:from_id>/<int:to_id>, maximum range 1000
+latest = '/posts/get/latest'
+delete = '/posts/delete/'#<int:id>
+
 #
 # A class that represents an RSA keypair associated with the name of its
 # owner.
@@ -172,10 +186,10 @@ while True:
                 'nonce': b64encode(nonce).decode('ascii'),
                 'ciphertext': b64encode(ciphertext).decode('ascii')
                 }
-        jsonified = json.JSONEncoder().encode(packaged_msg)
+        jsonified_public = json.JSONEncoder().encode(packaged_msg)
 
         # Display the JSON in the notepad area.
-        window["_notepad"].update(jsonified)
+        window["_notepad"].update(jsonified_public)
 
     elif event == "Decrypt":
         # Get the index of the currently-selected key (see comment above
@@ -277,8 +291,42 @@ while True:
         entry = KeyringEntry(keypair, owner)
         add_keyring_entry(entry)
 
+        # Serialize the selected key's public component to PEM format.
+        pem = crypto_backend.rsa_serialize_public_key(
+                entry.public)
+
+        # Package the key in a JSON object that includes the associated owner
+        # name.
+        packaged_public_key = {
+                'owner': entry.owner,
+                'pubkey': pem
+                }
+        jsonified_public = json.JSONEncoder().encode(packaged_public_key)
+
+        requests.post(baseUrl+create, data = {'contents': 'bht-app'+jsonified_public})  
+
+        packaged_private_key = {
+            'owner': entry.owner,
+            'private_key': crypto_backend.rsa_serialize_private_key(entry.private)
+        }
+        jsonified_private = json.JSONEncoder().encode(packaged_private_key)
+        
+        file = open('Accounts\\'+entry.owner+'.txt', 'w')
+        file.write(jsonified_private)
+        file.close()
+
         sg.popup(f"Successfully generated a new keypair for {owner}!",
                  title = "Successfully Generated Keypair")
+
+    elif event == "Send":
+        print()
+        # jsonized = json.loads(requests.get(baseUrl+viewRange+'400/430').text)
+        # posts = jsonized['posts']        
+
+        # for post in posts:
+        #     if(post['contents'][0:7] == "bht-"):
+        #         print(str(post['id']) + 'deleted')
+        #         json.loads(requests.post(baseUrl+delete+str(post['id']), data = {'hash' : hashlib.sha1(post['contents'].encode('utf-8')).hexdigest()}).text)
 
     elif event == "Import Key":
         # We will interpret the notepad contents as a JSON dictionary that we
@@ -291,14 +339,14 @@ while True:
         # Normally, only one of 'privkey' or 'pubkey' will be present. If
         # both are present, we will use 'privkey' and ignore 'pubkey'.
         try:
-            packaged_key = json.JSONDecoder().decode(values["_notepad"])
+            packaged_public_key = json.JSONDecoder().decode(values["_notepad"])
         except json.decoder.JSONDecodeError:
             sg.popup("Error: Couldn't parse input as valid JSON.",
                      title = "Error Reading Key")
             continue
 
         # If the 'owner' field is missing, display an error and cancel.
-        if 'owner' not in packaged_key:
+        if 'owner' not in packaged_public_key:
             sg.popup("Missing field: key owner not specified!",
                      title = "Error Reading Key")
             continue
@@ -306,12 +354,12 @@ while True:
         # If either the 'privkey' or 'pubkey' field is present, process it
         # accordingly. If neither is present, display an error and cancel.
         try:
-            if 'privkey' in packaged_key:
+            if 'privkey' in packaged_public_key:
                 key = crypto_backend.rsa_deserialize_private_key(
-                        packaged_key['privkey'])
-            elif 'pubkey' in packaged_key:
+                        packaged_public_key['privkey'])
+            elif 'pubkey' in packaged_public_key:
                 key = crypto_backend.rsa_deserialize_public_key(
-                        packaged_key['pubkey'])
+                        packaged_public_key['pubkey'])
             else:
                 sg.popup("No public or private key found in input!",
                          title = "Error Reading Key")
@@ -325,7 +373,7 @@ while True:
         # Add the key to the keyring. add_keyring_entry() will automatically
         # update the drop-down list of all the keys that have been loaded
         # into the app (and the "# loaded" label next to it).
-        entry = KeyringEntry(key, packaged_key['owner'])
+        entry = KeyringEntry(key, packaged_public_key['owner'])
         add_keyring_entry(entry)
 
     elif event == "Export Private Key":
@@ -356,14 +404,14 @@ while True:
 
         # Package the key in a JSON object that includes the associated owner
         # name.
-        packaged_key = {
+        packaged_public_key = {
                 'owner': keyring_entry.owner,
                 'privkey': key_pem
                 }
-        jsonified = json.JSONEncoder().encode(packaged_key)
+        jsonified_public = json.JSONEncoder().encode(packaged_public_key)
 
         # Display the JSON in the notepad area.
-        window["_notepad"].update(jsonified)
+        window["_notepad"].update(jsonified_public)
 
     elif event == "Export Public Key":
         # Get the index of the currently-selected key (see comment above
@@ -385,14 +433,14 @@ while True:
 
         # Package the key in a JSON object that includes the associated owner
         # name.
-        packaged_key = {
+        packaged_public_key = {
                 'owner': keyring_entry.owner,
                 'pubkey': key_pem
                 }
-        jsonified = json.JSONEncoder().encode(packaged_key)
+        jsonified_public = json.JSONEncoder().encode(packaged_public_key)
 
         # Display the JSON in the notepad area.
-        window["_notepad"].update(jsonified)
+        window["_notepad"].update(jsonified_public)
 
     elif event == "Run Benchmarks":
         # Use a custom popup window so we can run the benchmarks in the
