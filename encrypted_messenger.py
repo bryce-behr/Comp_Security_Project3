@@ -93,7 +93,7 @@ def keylist_contains(owner):
             return True
     return False
 
-def compute_targetlist():
+def compute_targetlist(targets):
     targetlist = []
     for target in targets:
         entry = target.owner
@@ -121,7 +121,7 @@ def add_keyring_entry(entry):
     
 def add_target(target):
     targets.append(target)
-    window["_targetList"].update(values = compute_targetlist())
+    window["_targetList"].update(values = compute_targetlist(targets))
 
 def updateMessages(account, target):
     tempString = ""
@@ -131,6 +131,7 @@ def updateMessages(account, target):
                 text = message['plaintext']
                 tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
             if message['target'] == account.owner and message['sender'] == target.owner:
+                print(message)
                 key = b64decode(message['sessionkey'], validate=True)
                 nonce = b64decode(message['nonce'], validate=True)
                 text = b64decode(message['ciphertext'], validate=True)
@@ -537,9 +538,13 @@ def MainLoop():
         elif event == "_targetList" or event == "_keylist":
             selected_idx = window["_keylist"].widget.current()
             selected_tgt = window["_targetList"].widget.current()
+            temp = []
+            for target in targets:
+                if target.owner != keyring[selected_idx].owner:
+                    temp.append(target)
+            window['_targetList'].update(values = compute_targetlist(temp), set_to_index = min(selected_tgt, len(temp)-1))
             if selected_tgt in range(0, len(targets)):
-
-                tempString = updateMessages(keyring[selected_idx], targets[selected_tgt])
+                tempString = updateMessages(keyring[selected_idx], temp[min(selected_tgt, len(temp)-1)])
                 window["_notepad"].update(tempString)
 
     window.close()
@@ -560,10 +565,10 @@ def liveUpdate():
 
     while True:
         time.sleep(5)
-        min = max
+        minimum = max
         max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
-        if min != max:
-            jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
+        if minimum != max:
+            jsonized = json.loads(requests.get(baseUrl+viewRange+str(minimum)+'/'+str(max)).text)
             posts = jsonized['posts']        
 
             for post in posts:
@@ -646,6 +651,9 @@ messages = []
 
 max = 0
 
+accountIndex = 0
+targetIndex = 0
+
 ######################################################################
 # Define the main window's layout and instantiate it
 ######################################################################
@@ -693,17 +701,17 @@ if __name__ == '__main__':
     contacts = open('System/contacts.txt', 'r')
     targets.extend([JSONKeyring(contact) for contact in json.load(contacts)])
     contacts.close()
-    window["_targetList"].update(values = compute_targetlist())
+    window["_targetList"].update(values = compute_targetlist(targets), set_to_index = 0)
     
     max = json.loads(requests.get(baseUrl+latest).text)['posts'][0]['id']
     
     lastPost = open('System/lastPost.txt', 'r')
-    min = int(lastPost.readline())
+    minimum = int(lastPost.readline())
     lastPost.close()
     
     # just in case the pastebin gets over 1k posts
-    while max-min >= 999:
-        jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(min+998)).text)
+    while max-minimum >= 999:
+        jsonized = json.loads(requests.get(baseUrl+viewRange+str(minimum)+'/'+str(minimum+998)).text)
         posts = jsonized['posts']
         
         for post in posts:
@@ -716,9 +724,9 @@ if __name__ == '__main__':
                 elif contents[0:3] == 'msg':
                     if not keylist_contains(jsonizedPost['sender']):
                         messages.append(jsonizedPost)
-        min += 999
+        minimum += 999
 
-    jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
+    jsonized = json.loads(requests.get(baseUrl+viewRange+str(minimum)+'/'+str(max)).text)
     posts = jsonized['posts']
 
     for post in posts:
@@ -731,6 +739,18 @@ if __name__ == '__main__':
             elif contents[0:3] == 'msg':
                     if not keylist_contains(jsonizedPost['sender']):
                         messages.append(jsonizedPost)
+
+    selected_idx = window["_keylist"].widget.current()
+    selected_tgt = window["_targetList"].widget.current()
+
+    temp = []
+    for target in targets:
+        if target.owner != keyring[selected_idx].owner:
+            temp.append(target)
+    window['_targetList'].update(values = compute_targetlist(temp), set_to_index = min(selected_tgt, len(temp)-1))
+    if selected_tgt in range(0, len(targets)):
+        tempString = updateMessages(keyring[selected_idx], temp[min(selected_tgt, len(temp)-1)])
+        window["_notepad"].update(tempString)
 
     target_update_thread = threading.Thread(target=liveUpdate, daemon=True)
     target_update_thread.start()
