@@ -123,6 +123,29 @@ def add_target(target):
     targets.append(target)
     window["_targetList"].update(values = compute_targetlist())
 
+def updateMessages(account, target):
+    tempString = ""
+    if account.owner != target.owner:
+        for message in messages:
+            if message['sender'] == account.owner and message['target'] == target.owner:
+                text = message['plaintext']
+                tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
+            if message['target'] == account.owner and message['sender'] == target.owner:
+                key = b64decode(message['sessionkey'], validate=True)
+                nonce = b64decode(message['nonce'], validate=True)
+                text = b64decode(message['ciphertext'], validate=True)
+                signature = b64decode(message['signature'], validate=True)
+                m = key+nonce+text
+                if not crypto_backend.verify_signature(target.public, m, signature):
+                    continue #this message was faked
+                if 'plaintext' in message:
+                    text = message['plaintext']
+                else:
+                    text = decryptMessage(message, account.private).decode()
+                tempString += "["+message['sender']+"] "+text+'\n'
+    return tempString
+
+
 ######################################################################
 # Main event loop for window
 ######################################################################
@@ -246,19 +269,7 @@ def MainLoop():
             print(packaged_msg)
             messages.append(packaged_msg)
 
-            tempString = ""
-            if account_name != target_name:
-                for message in messages:
-                    if message['sender'] == account_name or message['sender'] == target_name:
-                        if message['target'] == account_name:
-                            if 'plaintext' in message:
-                                text = message['plaintext']
-                            else:
-                                text = decryptMessage(message, account_key).decode()
-                            tempString += "["+message['sender']+"] "+text+'\n'
-                        elif message['target'] == target_name:
-                            text = message['plaintext']
-                            tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
+            tempString = updateMessages(keyring[selected_idx], targets[selected_tgt])
 
             window["_notepad"].update(tempString)
 
@@ -524,26 +535,11 @@ def MainLoop():
             window["_notepad"].update(jsonified_public)
             
         elif event == "_targetList" or event == "_keylist":
-            #TODO: switch conversations
-            account_name = keyring[window["_keylist"].widget.current()].owner
+            selected_idx = window["_keylist"].widget.current()
             selected_tgt = window["_targetList"].widget.current()
             if selected_tgt in range(0, len(targets)):
-                target_name = targets[selected_tgt].owner
 
-                tempString = ""
-                if account_name != target_name:
-                    for message in messages:
-                        if message['sender'] == account_name or message['sender'] == target_name:
-                            if message['target'] == account_name:
-                                if 'plaintext' in message:
-                                    text = message['plaintext']
-                                else:
-                                    text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
-                                tempString += "["+message['sender']+"] "+text+'\n'
-                            elif message['target'] == target_name:
-                                text = message['plaintext']
-                                tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
-
+                tempString = updateMessages(keyring[selected_idx], targets[selected_tgt])
                 window["_notepad"].update(tempString)
 
     window.close()
@@ -581,25 +577,14 @@ def liveUpdate():
                         if not keylist_contains(jsonizedPost['sender']):
                             messages.append(jsonizedPost)
 
-            account_name = keyring[window["_keylist"].widget.current()].owner
+            selected_idx = window["_keylist"].widget.current()
             selected_tgt = window["_targetList"].widget.current()
             if selected_tgt not in range(0, len(targets)):
                 sg.popup("No Target selected!")
                 continue
             target_name = targets[selected_tgt].owner
 
-            tempString = ""
-            for message in messages:
-                if message['sender'] == account_name or message['sender'] == target_name:
-                    if message['target'] == account_name:
-                        if 'plaintext' in message:
-                            text = message['plaintext']
-                        else:
-                            text = decryptMessage(message, keyring[window["_keylist"].widget.current()].private).decode()
-                        tempString += "["+message['sender']+"] "+text+'\n'
-                    elif message['target'] == target_name:
-                        text = message['plaintext']
-                        tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
+            tempString = updateMessages(keyring[selected_idx], targets[selected_tgt])
 
             window["_notepad"].update(tempString)
 
@@ -734,7 +719,7 @@ if __name__ == '__main__':
         min += 999
 
     jsonized = json.loads(requests.get(baseUrl+viewRange+str(min)+'/'+str(max)).text)
-    posts = jsonized['posts']   
+    posts = jsonized['posts']
 
     for post in posts:
         if(post['contents'][0:4] == 'bht-'):
