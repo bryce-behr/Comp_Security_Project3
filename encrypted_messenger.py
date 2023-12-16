@@ -580,7 +580,7 @@ if __name__ == '__main__':
     selected_tgt = window["_targetList"].widget.current()
     temp = []
     for target in targets:
-        if target.owner != keyring[selected_idx].owner:
+        if len(keyring) > 0 and target.owner != keyring[selected_idx].owner:
             temp.append(target)
     window['_targetList'].update(values = compute_targetlist(temp), set_to_index = min(selected_tgt, len(temp)-1))
     if selected_tgt in range(0, len(targets)):

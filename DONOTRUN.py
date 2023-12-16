@@ -13,5 +13,5 @@ lastPost.write("[]")
 lastPost.close()
 
 
-# for file in os.listdir('Accounts'):
-#     r = os.remove('Accounts/'+file)
+for file in os.listdir('Accounts'):
+    r = os.remove('Accounts/'+file)
