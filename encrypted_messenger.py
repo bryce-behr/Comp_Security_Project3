@@ -131,7 +131,10 @@ def updateMessages(account, target):
                 text = message['plaintext']
                 tempString += ('\t\t\t\t['+message['sender']+"] "+text)+'\n'
             if message['target'] == account.owner and message['sender'] == target.owner:
-                print(message)
+                if 'plaintext' in message:
+                    text = message['plaintext']
+                    tempString += "["+message['sender']+"] "+text+'\n'
+                    continue
                 key = b64decode(message['sessionkey'], validate=True)
                 nonce = b64decode(message['nonce'], validate=True)
                 text = b64decode(message['ciphertext'], validate=True)
