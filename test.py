@@ -14,11 +14,11 @@ x = None
 #fields = {'contents': 'testing: I like pancakes'}
 #print(fields)
 #x = requests.post(baseUrl+create, data = fields)
-# x = requests.get(baseUrl+view+"226")
+x = requests.get(baseUrl+view+"608")
 #x = requests.get(baseUrl+viewRange+"226"+"/"+"250")
 #x = requests.get(baseUrl+latest)
 
 try:
-    print(x.text) 
+    print(x.json()['contents']) 
 except:
     print("error")
