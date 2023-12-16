@@ -219,14 +219,24 @@ def MainLoop():
                     
 
                     
-            
-            # see above, repeated for targetlist
+            selected_idx = window["_keylist"].widget.current()
             selected_tgt = window["_targetList"].widget.current()
-            if selected_tgt not in range(0, len(targets)):
-                sg.popup("No target selected!")
-                continue
-            target_key = targets[selected_tgt].public
-            target_name = targets[selected_tgt].owner
+            temp = []
+            for target in targets:
+                if target.owner != keyring[selected_idx].owner:
+                    temp.append(target)
+            # window['_targetList'].update(values = compute_targetlist(temp), set_to_index = min(selected_tgt, len(temp)-1))
+            # if selected_tgt in range(0, len(targets)):
+            #     tempString = updateMessages(keyring[selected_idx], temp[min(selected_tgt, len(temp)-1)])
+            #     window["_notepad"].update(tempString)            
+
+            # see above, repeated for targetlist
+            # selected_tgt = window["_targetList"].widget.current()
+            # if selected_tgt not in range(0, len(targets)):
+            #     sg.popup("No target selected!")
+            #     continue
+            target_key = temp[selected_tgt].public
+            target_name = temp[selected_tgt].owner
 
             # Encrypt the contents of the notepad area with a randomly-generated
             # AES session key (which in turn is encrypted with RSA so it can be
@@ -270,10 +280,9 @@ def MainLoop():
             packaged_msg.pop('signature')
             packaged_msg.pop('nonce')
             packaged_msg.pop('sessionkey')
-            print(packaged_msg)
             messages.append(packaged_msg)
 
-            tempString = updateMessages(keyring[selected_idx], targets[selected_tgt])
+            tempString = updateMessages(keyring[selected_idx], temp[selected_tgt])
 
             window["_notepad"].update(tempString)
 
@@ -357,6 +366,13 @@ def MainLoop():
                 tempString = updateMessages(keyring[selected_idx], temp[min(selected_tgt, len(temp)-1)])
                 window["_notepad"].update(tempString)
 
+            # selected_idx = window["_keylist"].widget.current()
+            # selected_tgt = window["_targetList"].widget.current()
+            # window['_targetList'].update(values = compute_targetlist(targets), set_to_index = min(selected_tgt, len(targets)-1))
+            # if selected_tgt in range(0, len(targets)):
+            #     tempString = updateMessages(keyring[selected_idx], targets[min(selected_tgt, len(targets)-1)])
+            #     window["_notepad"].update(tempString)
+
     window.close()
     lastPost = open('System/lastPost.txt', 'w')
     lastPost.write(str(max))
@@ -392,16 +408,26 @@ def liveUpdate():
                         if not keylist_contains(jsonizedPost['sender']):
                             messages.append(jsonizedPost)
 
+            # selected_idx = window["_keylist"].widget.current()
+            # selected_tgt = window["_targetList"].widget.current()
+            # if selected_tgt not in range(0, len(targets)):
+            #     sg.popup("No Target selected!")
+            #     continue
+
+
             selected_idx = window["_keylist"].widget.current()
             selected_tgt = window["_targetList"].widget.current()
-            if selected_tgt not in range(0, len(targets)):
-                sg.popup("No Target selected!")
-                continue
-            target_name = targets[selected_tgt].owner
+            temp = []
+            for target in targets:
+                if target.owner != keyring[selected_idx].owner:
+                    temp.append(target)
+            window['_targetList'].update(values = compute_targetlist(temp), set_to_index = min(selected_tgt, len(temp)-1))
+            if selected_tgt in range(0, len(targets)):
+                tempString = updateMessages(keyring[selected_idx], temp[min(selected_tgt, len(temp)-1)])
+                window["_notepad"].update(tempString)
+            # tempString = updateMessages(keyring[selected_idx], targets[selected_tgt])
 
-            tempString = updateMessages(keyring[selected_idx], targets[selected_tgt])
-
-            window["_notepad"].update(tempString)
+            # window["_notepad"].update(tempString)
 
 def decryptMessage(msg, private_key):
     try:
@@ -552,7 +578,6 @@ if __name__ == '__main__':
 
     selected_idx = window["_keylist"].widget.current()
     selected_tgt = window["_targetList"].widget.current()
-
     temp = []
     for target in targets:
         if target.owner != keyring[selected_idx].owner:
@@ -561,6 +586,13 @@ if __name__ == '__main__':
     if selected_tgt in range(0, len(targets)):
         tempString = updateMessages(keyring[selected_idx], temp[min(selected_tgt, len(temp)-1)])
         window["_notepad"].update(tempString)
+
+    # selected_idx = window["_keylist"].widget.current()
+    # selected_tgt = window["_targetList"].widget.current()
+    # window['_targetList'].update(values = compute_targetlist(targets), set_to_index = min(selected_tgt, len(targets)-1))
+    # if selected_tgt in range(0, len(targets)):
+    #     tempString = updateMessages(keyring[selected_idx], targets[min(selected_tgt, len(targets)-1)])
+    #     window["_notepad"].update(tempString)
 
     target_update_thread = threading.Thread(target=liveUpdate, daemon=True)
     target_update_thread.start()
