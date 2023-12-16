@@ -62,3 +62,25 @@
 #         otherAccountsList.append(entry)
 
 #     return otherAccountsList
+
+
+
+            # if(event == "_keylist"):
+            #     temp = []
+            #     for target in targets:
+            #         temp.append(target)
+            #     targetIndex = 0
+            #     selected_idx = window["_keylist"].widget.current()
+            #     if selected_idx in range(0, len(keyring)):
+            #         account_name = keyring[selected_idx].owner
+            #         selected_tgt = window["_targetList"].widget.current()
+            #         targetIndex = selected_tgt
+            #         if selected_tgt in range(0, len(targets)):
+            #             target_name = targets[selected_tgt].owner
+            #             if account_name == target_name:    
+            #                 temp.remove(targets[selected_tgt])
+            #                 targetIndex = max(targetIndex, 0)  # Setting lower bound
+            #                 targetIndex = min(targetIndex, temp.length - 1)
+
+            #     window["_targetList"].update(values = compute_targetlist(targets=temp), set_to_index = targetIndex)
+            #     # window["_targetList"]
