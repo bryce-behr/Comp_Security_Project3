@@ -359,10 +359,10 @@ def MainLoop():
             selected_tgt = window["_targetList"].widget.current()
             temp = []
             for target in targets:
-                if target.owner != keyring[selected_idx].owner:
+                if len(keyring) <= 0 or target.owner != keyring[selected_idx].owner:
                     temp.append(target)
             window['_targetList'].update(values = compute_targetlist(temp), set_to_index = min(selected_tgt, len(temp)-1))
-            if selected_tgt in range(0, len(targets)):
+            if selected_idx in range(0, len(keyring)) and selected_tgt in range(0, len(targets)):
                 tempString = updateMessages(keyring[selected_idx], temp[min(selected_tgt, len(temp)-1)])
                 window["_notepad"].update(tempString)
 
@@ -580,10 +580,10 @@ if __name__ == '__main__':
     selected_tgt = window["_targetList"].widget.current()
     temp = []
     for target in targets:
-        if len(keyring) > 0 and target.owner != keyring[selected_idx].owner:
+        if len(keyring) <= 0 or target.owner != keyring[selected_idx].owner:
             temp.append(target)
     window['_targetList'].update(values = compute_targetlist(temp), set_to_index = min(selected_tgt, len(temp)-1))
-    if selected_tgt in range(0, len(targets)):
+    if selected_idx in range(0, len(keyring)) and selected_tgt in range(0, len(targets)):
         tempString = updateMessages(keyring[selected_idx], temp[min(selected_tgt, len(temp)-1)])
         window["_notepad"].update(tempString)
 
