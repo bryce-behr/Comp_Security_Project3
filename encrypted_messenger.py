@@ -402,7 +402,7 @@ def liveUpdate():
                     contents = post['contents'][4:]
                     jsonizedPost =  json.loads(contents[3:])
                     if contents[0:3] == 'acc':
-                        if targetlist_contains(jsonizedPost['sender']) == False:
+                        if targetlist_contains(jsonizedPost['owner']) == False:
                             add_target(KeyringEntry(key = crypto_backend.rsa_deserialize_public_key(jsonizedPost['pubkey']), owner = jsonizedPost['owner']))
                     elif contents[0:3] == 'msg':
                         if not keylist_contains(jsonizedPost['sender']):
